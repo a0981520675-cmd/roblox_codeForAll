@@ -239,7 +239,7 @@ local function setNoclip(toggle)
     end
 end
 
--- 3. 飛行 (Fly) 邏輯（完全依據角色當前面向來決定 W/A/S/D 前後左右）
+-- 3. 飛行 (Fly) 邏輯（依據視角移動，且自動將角色轉向視角看的地方）
 local function setFly(toggle)
     if flyConn then
         flyConn:Disconnect()
@@ -268,25 +268,23 @@ local function setFly(toggle)
         flyConn = RunService.RenderStepped:Connect(function()
             if not flyEnabled or not root then return end
 
+            local camera = Workspace.CurrentCamera
             local moveDir = Vector3.zero
             
-            -- 取得角色當前的水平面朝向（LookVector 為前方，RightVector 為右方）
-            local charLook = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z).Unit
-            local charRight = Vector3.new(root.CFrame.RightVector.X, 0, root.CFrame.RightVector.Z).Unit
+            -- 取得攝影機的水平方向（忽略上下仰角，確保在水平面上依視角前後左右移動）
+            local camLook = Vector3.new(camera.CFrame.LookVector.X, 0, camera.CFrame.LookVector.Z).Unit
+            local camRight = Vector3.new(camera.CFrame.RightVector.X, 0, camera.CFrame.RightVector.Z).Unit
 
-            -- 嚴格綁定角色面向：W前進、S後退、A向左、D向右
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + charLook end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - charLook end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - charRight end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + charRight end
-            
-            -- 空白鍵上升、Shift下降
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camLook end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camLook end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camRight end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camRight end
             if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
             if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
 
-            -- 鎖定飛行時的身體旋轉維持正面朝向
-            flyBodyGyro.CFrame = root.CFrame
-            
+            -- 讓角色身體自動轉向並對齊你眼睛看的方向
+            flyBodyGyro.CFrame = camera.CFrame
+
             if moveDir.Magnitude > 0 then
                 flyBodyVelocity.Velocity = moveDir.Unit * flySpeed
             else
