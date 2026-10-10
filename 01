@@ -15,6 +15,7 @@ local speedEnabled = false
 local jumpEnabled = false
 local flyEnabled = false
 local noclipEnabled = false
+local antiInertiaEnabled = false -- 消除慣性開關
 
 local customSpeed = 50
 local customJump = 120
@@ -33,7 +34,7 @@ ScreenGui.Parent = parentGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 240, 0, 310)
+MainFrame.Size = UDim2.new(0, 240, 0, 355)
 MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 32, 38)
 MainFrame.BorderSizePixel = 0
@@ -148,15 +149,16 @@ local function createControlRow(posY, btnText, defaultInputText)
 end
 
 -- 建立各功能區塊
-local SpeedBtn, SpeedBox = createControlRow(45, "⚡ 修改移速：關", "50")
-local JumpBtn, JumpBox   = createControlRow(90, "🚀 修改高跳：關", "120")
-local FlyBtn, FlyBox     = createControlRow(135, "🕊️ 飛行模式：關", "50")
-local NoclipBtn, _       = createControlRow(180, "👻 穿牆模式：關", nil)
+local SpeedBtn, SpeedBox        = createControlRow(45, "⚡ 修改移速：關", "50")
+local JumpBtn, JumpBox          = createControlRow(90, "🚀 修改高跳：關", "120")
+local FlyBtn, FlyBox            = createControlRow(135, "🕊️ 飛行模式：關", "50")
+local NoclipBtn, _              = createControlRow(180, "👻 穿牆模式：關", nil)
+local AntiInertiaBtn, _         = createControlRow(225, "🛑 消除慣性：關", nil)
 
 -- 重置所有屬性按鈕
 local ResetBtn = Instance.new("TextButton")
 ResetBtn.Size = UDim2.new(1, -20, 0, 35)
-ResetBtn.Position = UDim2.new(0, 10, 0, 230)
+ResetBtn.Position = UDim2.new(0, 10, 0, 275)
 ResetBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 40)
 ResetBtn.Text = "🔄 重置角色狀態"
 ResetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -180,9 +182,9 @@ local function getChar()
     end
 end
 
--- 1. 速度與高跳維持迴圈（防遊戲防作弊重設）
+-- 1. 速度、高跳與「消除慣性」主要邏輯
 RunService.Stepped:Connect(function()
-    local char, hum = getChar()
+    local char, hum, root = getChar()
     if not char then return end
 
     if speedEnabled then
@@ -192,6 +194,19 @@ RunService.Stepped:Connect(function()
     if jumpEnabled then
         hum.UseJumpPower = true
         hum.JumpPower = customJump
+    end
+
+    -- 🛑 消除慣性核心代碼：檢查玩家是否按下移動鍵
+    if antiInertiaEnabled and root then
+        local w = UserInputService:IsKeyDown(Enum.KeyCode.W)
+        local a = UserInputService:IsKeyDown(Enum.KeyCode.A)
+        local s = UserInputService:IsKeyDown(Enum.KeyCode.S)
+        local d = UserInputService:IsKeyDown(Enum.KeyCode.D)
+
+        -- 若沒有按下任何 WASD，強制清除水平移動慣性（維持垂直 Y 軸重力）
+        if not (w or a or s or d) then
+            root.AssemblyLinearVelocity = Vector3.new(0, root.AssemblyLinearVelocity.Y, 0)
+        end
     end
 end)
 
@@ -334,7 +349,7 @@ FlyBox.FocusLost:Connect(function()
     if val then flySpeed = val else FlyBox.Text = tostring(flySpeed) end
 end)
 
--- 穿牆模式按鈕
+-- 穿牆模式按鈕（已修正語法錯誤）
 NoclipBtn.MouseButton1Click:Connect(function()
     noclipEnabled = not noclipEnabled
     if noclipEnabled then
@@ -347,9 +362,21 @@ NoclipBtn.MouseButton1Click:Connect(function()
     setNoclip(noclipEnabled)
 end)
 
+-- 🛑 消除慣性按鈕
+AntiInertiaBtn.MouseButton1Click:Connect(function()
+    antiInertiaEnabled = not antiInertiaEnabled
+    if antiInertiaEnabled then
+        AntiInertiaBtn.Text = "🛑 消除慣性：開"
+        AntiInertiaBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 80)
+    else
+        AntiInertiaBtn.Text = "🛑 消除慣性：關"
+        AntiInertiaBtn.BackgroundColor3 = Color3.fromRGB(55, 58, 68)
+    end
+end)
+
 -- 重置所有狀態按鈕
 ResetBtn.MouseButton1Click:Connect(function()
-    speedEnabled, jumpEnabled, flyEnabled, noclipEnabled = false, false, false, false
+    speedEnabled, jumpEnabled, flyEnabled, noclipEnabled, antiInertiaEnabled = false, false, false, false, false
 
     SpeedBtn.Text = "⚡ 修改移速：關"
     SpeedBtn.BackgroundColor3 = Color3.fromRGB(55, 58, 68)
@@ -362,6 +389,9 @@ ResetBtn.MouseButton1Click:Connect(function()
 
     NoclipBtn.Text = "👻 穿牆模式：關"
     NoclipBtn.BackgroundColor3 = Color3.fromRGB(55, 58, 68)
+
+    AntiInertiaBtn.Text = "🛑 消除慣性：關"
+    AntiInertiaBtn.BackgroundColor3 = Color3.fromRGB(55, 58, 68)
 
     setFly(false)
     setNoclip(false)
