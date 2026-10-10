@@ -240,7 +240,7 @@ local function setNoclip(toggle)
     end
 end
 
--- 3. 飛行 (Fly) 邏輯
+-- 3. 飛行 (Fly) 邏輯（已鎖定水平方向，視角上下看不會亂飛）
 local function setFly(toggle)
     if flyConn then
         flyConn:Disconnect()
@@ -272,10 +272,14 @@ local function setFly(toggle)
             local camera = Workspace.CurrentCamera
             local moveDir = Vector3.zero
 
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
+            -- 取得攝影機的水平方向（Y 軸歸零，避免上下看時往天空或地下飛）
+            local lookVec = Vector3.new(camera.CFrame.LookVector.X, 0, camera.CFrame.LookVector.Z).Unit
+            local rightVec = Vector3.new(camera.CFrame.RightVector.X, 0, camera.CFrame.RightVector.Z).Unit
+
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + lookVec end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - lookVec end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - rightVec end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + rightVec end
             if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
             if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
 
@@ -349,7 +353,7 @@ FlyBox.FocusLost:Connect(function()
     if val then flySpeed = val else FlyBox.Text = tostring(flySpeed) end
 end)
 
--- 穿牆模式按鈕（已修正語法錯誤）
+-- 穿牆模式按鈕
 NoclipBtn.MouseButton1Click:Connect(function()
     noclipEnabled = not noclipEnabled
     if noclipEnabled then
